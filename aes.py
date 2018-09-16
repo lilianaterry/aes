@@ -23,6 +23,8 @@ class AES:
                 self.key_array[row][col] = key_bytes[index]
                 index = index + 1
 
+        self.__shift_rows()
+
     def encrypt_file(self, inputfile, outfile):
         pass
 
@@ -36,11 +38,20 @@ class AES:
 
 
     def __shift_rows(self):
-        pass
+        for row in range(1, AES.ROW_COUNT):
+            new_row = []
+            start_index = -row % self.col_count
 
+            for index in range (start_index, self.col_count):
+                new_row.append(self.state[row][index])
+            
+            for index in range (start_index):
+                new_row.append(self.state[row][index])
+
+            self.state[row] = new_row
 
     def __mix_columns(self):
-        for i in range(AES.COL_COUNT):
+        for i in range(AES.ROW_COUNT):
             col = AES.__get_col(self.state, i)
             mixed_col = AES.__matrix_multiply(AES.MIX_MATRIX, col)
             for r in range(len(mixed_col)):
