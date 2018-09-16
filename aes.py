@@ -1,6 +1,6 @@
-
 class AES:
-    sub_matrix = [
+    COL_COUNT = 4
+    MIX_MATRIX = [
         [2, 3, 1, 1],
         [1, 2, 3, 1],
         [1, 1, 2, 3],
@@ -11,6 +11,7 @@ class AES:
     def __init__(self, key, keysize):
         self.key = key
         self.keysize = keysize                 
+        self.state = []
 
 
     def encrypt_file(self, inputfile, outfile):
@@ -30,7 +31,11 @@ class AES:
 
 
     def __mix_columns(self):
-        pass
+        for i in range(AES.COL_COUNT):
+            col = AES.__get_col(self.state, i)
+            mixed_col = AES.__matrix_multiply(AES.MIX_MATRIX, col)
+            for r in range(len(mixed_col)):
+                self.state[r][i] = mixed_col[r][0]
 
 
     def __add_roundkey(self):
@@ -60,3 +65,13 @@ class AES:
     @staticmethod
     def __mult(int_a, int_b):
         pass
+
+
+    @staticmethod
+    def __get_col(mat_a, col_idx):
+        col = []
+
+        for row in mat_a:
+            col.append([row[col_idx]])
+
+        return col
