@@ -45,6 +45,15 @@ class AES:
     ]
 
     BITS_PER_BYTE = 8
+    ROUNDS_PER_KEYSIZE = {
+        128: 11,
+        192: 13,
+        256: 15
+    }
+
+    # Coefficients of an element of the finite field (from wikipedia)
+    RC = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
+
 
     def __init__(self, key, keysize):
         # TODO: do we need the key??? :)
@@ -53,6 +62,8 @@ class AES:
         self.state = []
         self.col_count = self.keysize // AES.BITS_PER_BYTE // AES.ROW_COUNT
         self.__generate_key_array(key)
+
+        self.round_subkeys = self.__generate_round_subkeys()
 
 
     def encrypt_file(self, inputfile, outfile):
@@ -107,6 +118,71 @@ class AES:
         pass
 
 
+    def __generate_round_subkeys(self):
+        word_size = 32
+        key_words = self.keysize // word_size
+        total_col = 4 * AES.ROUNDS_PER_KEYSIZE[self.keysize]
+
+        round_subkeys = AES.__create_matrix(AES.ROW_COUNT, total_col)
+
+        for current_col in range(total_col):
+            print("generating column: " + str(current_col))
+            if current_col < key_words:
+                AES.__put_col(round_subkeys, current_col, AES.__get_col(self.key_array, current_col))
+            elif current_col >= word_size and current_col % word_size == 0:
+                previous_key_col = AES.__get_col(round_subkeys, current_col - key_words)
+
+                col_to_sub = AES.__get_col(round_subkeys, current_col - 1)
+                col_to_rotate = AES.__sub_word(col_to_sub)
+                rotated_col = AES.__rot_word(col_to_rotate)
+
+                rcon_col = [[AES.RC[current_col // word_size]], [0], [0], [0]]
+
+                finished_col = AES.__xor_word(previous_key_col, AES.__xor_word(rotated_col, rcon_col))
+
+                AES.__put_col(round_subkeys, current_col, finished_col)
+            elif current_col >= word_size and word_size > 6 and current_col % word_size == 4:
+                previous_key_col = AES.__get_col(round_subkeys, current_col - key_words)
+
+                col_to_sub = AES.__get_col(round_subkeys, current_col - 1)
+                subbed_col = AES.__sub_word(col_to_sub)
+
+                finished_col = AES.__xor_word(previous_key_col, subbed_col)
+
+                AES.__put_col(round_subkeys, current_col, finished_col)
+            else:
+                previous_key_col = AES.__get_col(round_subkeys, current_col - key_words)
+
+                other_previous_key_col = AES.__get_col(round_subkeys, current_col - 1)
+
+                finished_col = AES.__xor_word(previous_key_col, other_previous_key_col)
+
+                AES.__put_col(round_subkeys, current_col, finished_col)
+
+        return round_subkeys
+
+
+    @staticmethod
+    def __rot_word(col):
+        col.append(col.pop(0))
+        return col
+
+
+    @staticmethod
+    def __sub_word(col):
+        for row in col:
+            row[0] = AES.SUB_BYTES[row[0]]
+        return col
+
+    
+    @staticmethod
+    def __xor_word(col_a, col_b):
+        for i in range(len(col_a)):
+            col_a[i][0] ^= col_b[i][0]
+        
+        return col_a
+
+
     @staticmethod
     def __matrix_multiply(mat_a, mat_b):
         out_m = len(mat_a)
@@ -144,3 +220,11 @@ class AES:
             col.append([row[col_idx]])
 
         return col
+
+
+    @staticmethod
+    def __put_col(mat_a, col_idx, col):
+        for row_idx in range(len(mat_a)):
+            mat_a[row_idx][col_idx] = col[row_idx][0]
+
+        return mat_a
