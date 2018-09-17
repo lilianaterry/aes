@@ -94,31 +94,96 @@ class AES:
                 current_roundkey += 1
                 self.__sub_bytes(AES.SUB_BYTES)
                 print("After sub: " + str(current_roundkey))
-
                 print(np.matrix(self.state))
+
                 self.__shift_rows()
                 print("After shift: " + str(current_roundkey))
-
                 print(np.matrix(self.state))
+
                 self.__mix_columns()
                 print("After mix: " + str(current_roundkey))
-
                 print(np.matrix(self.state))
+
                 self.__add_roundkey(current_roundkey)
                 print("After roundkey: " + str(current_roundkey))
-
                 print(np.matrix(self.state))
 
             current_roundkey += 1
             self.__sub_bytes(AES.SUB_BYTES)
+            print("After sub: " + str(current_roundkey))
+
+            print(np.matrix(self.state))
             self.__shift_rows()
+            print("After shift: " + str(current_roundkey))
+
+            print(np.matrix(self.state))
             self.__add_roundkey(current_roundkey)
+            print("After roundkey: " + str(current_roundkey))
+
+            print(np.matrix(self.state))
+
+            print("Final:")
+            print(np.matrix(self.state))
 
         self.__write_chunk_to_file(outfile, self.state)
             
 
     def decrypt_file(self, inputfile, outfile):
-        pass
+        while True:
+            self.state = AES.__create_matrix(4, 4)
+            byte_count = self.__read_chunk_into_state(inputfile, 16)
+            
+            if byte_count == 0:
+                outfile.seek(-1, os.SEEK_END)
+                bytes_to_remove = outfile.read(1)
+                outfile.seek(-1 * bytes_to_remove, os.SEEK_END)
+                outfile.truncate()
+                return
+
+            print("Before anything")
+            print(np.matrix(self.state))
+
+            current_roundkey = 0
+            self.__add_roundkey(current_roundkey)
+            print("After roundkey: " + str(current_roundkey))
+            print(np.matrix(self.state))
+
+            # do algorithm
+            for _ in range(AES.ROUNDS_PER_KEYSIZE[self.keysize] - 2):
+                current_roundkey += 1
+                self.__inv_shift_rows()
+                print("After shift: " + str(current_roundkey))
+                print(np.matrix(self.state))
+                
+                self.__sub_bytes(AES.SUB_BYTES_INVERSE)
+                print("After sub: " + str(current_roundkey))
+                print(np.matrix(self.state))
+
+                self.__add_roundkey(current_roundkey)
+                print("After roundkey: " + str(current_roundkey))
+                print(np.matrix(self.state))
+
+                self.__inv_mix_columns()
+                print("After mix: " + str(current_roundkey))
+                print(np.matrix(self.state))
+
+            current_roundkey += 1
+            self.__inv_shift_rows()
+            print("After shift: " + str(current_roundkey))
+            print(np.matrix(self.state))
+
+            self.__sub_bytes(AES.SUB_BYTES_INVERSE)
+            print("After sub: " + str(current_roundkey))
+            print(np.matrix(self.state))
+
+            self.__add_roundkey(current_roundkey)
+            print("After roundkey: " + str(current_roundkey))
+            print(np.matrix(self.state))
+
+            print("Final:")
+            print(np.matrix(self.state))
+
+        self.__write_chunk_to_file(outfile, self.state)
 
 
     def __read_chunk_into_state(self, input, chunk_size):
@@ -157,17 +222,18 @@ class AES:
 
 
     def __shift_rows(self):
-        for row in range(1, AES.ROW_COUNT):
-            new_row = []
-            start_index = -row % self.col_count
+        for row_idx in range(1, AES.ROW_COUNT):
+            row = self.state[row_idx]
+            for _ in range(row_idx):
+                row.append(row.pop(0))
 
-            for index in range (start_index, self.col_count):
-                new_row.append(self.state[row][index])
-            
-            for index in range (start_index):
-                new_row.append(self.state[row][index])
 
-            self.state[row] = new_row
+    def __inv_shift_rows(self):
+        for row_idx in range(1, AES.ROW_COUNT):
+            row = self.state[row_idx]
+            for _ in range(row_idx):
+                row.insert(0, row.pop())
+
 
     def __mix_columns(self):
         for i in range(AES.ROW_COUNT):
