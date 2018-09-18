@@ -1,5 +1,6 @@
 import numpy as np
-
+import os
+import sys
 class AES:
     ROW_COUNT = 4
     SUB_BYTES = [   
@@ -79,6 +80,7 @@ class AES:
             
             if last_block:
                 # fill the rest of the block with 0's and add count at end
+                print("Bytes that were padded: " + str(16 - byte_count))
                 self.state[3][3] = 16 - byte_count
 
             print("Before anything")
@@ -125,7 +127,7 @@ class AES:
             print("Final:")
             print(np.matrix(self.state))
 
-        self.__write_chunk_to_file(outfile, self.state)
+            self.__write_chunk_to_file(outfile, self.state)
             
 
     def decrypt_file(self, inputfile, outfile):
@@ -134,23 +136,24 @@ class AES:
             byte_count = self.__read_chunk_into_state(inputfile, 16)
             
             if byte_count == 0:
-                outfile.seek(-1, os.SEEK_END)
+                outfile.seek(-1, 2)
                 bytes_to_remove = outfile.read(1)
-                outfile.seek(-1 * bytes_to_remove, os.SEEK_END)
+                print("bytes to remove: " + str(-1 * int.from_bytes(bytes_to_remove, sys.byteorder)))
+                outfile.seek(-1 * int.from_bytes(bytes_to_remove, sys.byteorder), 2)
                 outfile.truncate()
                 return
 
             print("Before anything")
             print(np.matrix(self.state))
 
-            current_roundkey = 0
+            current_roundkey = AES.ROUNDS_PER_KEYSIZE[self.keysize] - 1
             self.__add_roundkey(current_roundkey)
             print("After roundkey: " + str(current_roundkey))
             print(np.matrix(self.state))
 
             # do algorithm
             for _ in range(AES.ROUNDS_PER_KEYSIZE[self.keysize] - 2):
-                current_roundkey += 1
+                current_roundkey -= 1
                 self.__inv_shift_rows()
                 print("After shift: " + str(current_roundkey))
                 print(np.matrix(self.state))
@@ -167,7 +170,7 @@ class AES:
                 print("After mix: " + str(current_roundkey))
                 print(np.matrix(self.state))
 
-            current_roundkey += 1
+            current_roundkey -= 1
             self.__inv_shift_rows()
             print("After shift: " + str(current_roundkey))
             print(np.matrix(self.state))
@@ -183,7 +186,7 @@ class AES:
             print("Final:")
             print(np.matrix(self.state))
 
-        self.__write_chunk_to_file(outfile, self.state)
+            self.__write_chunk_to_file(outfile, self.state)
 
 
     def __read_chunk_into_state(self, input, chunk_size):
@@ -242,6 +245,12 @@ class AES:
             for r in range(len(mixed_col)):
                 self.state[r][i] = mixed_col[r][0]
 
+    def __inv_mix_columns(self):
+        for i in range(AES.ROW_COUNT):
+            col = AES.__get_col(self.state, i)
+            mixed_col = AES.__gen_inverse_modular_product(col)
+            for r in range(len(mixed_col)):
+                self.state[r][i] = mixed_col[r][0]
 
     def __add_roundkey(self, round_idx):
         key_column_start_idx = round_idx * self.col_count
@@ -314,21 +323,6 @@ class AES:
         return col_a
 
 
-    # @staticmethod
-    # def __matrix_multiply(mat_a, mat_b):
-    #     out_m = len(mat_a)
-    #     out_n = len(mat_b[0])
-
-    #     out_mat = AES.__create_matrix(out_m, out_n)
-
-    #     for out_r in range(out_m):
-    #         for out_c in range(out_n):
-    #             for other_val in range(len(mat_a[0])):
-    #                 out_mat[out_r][out_c] ^= AES.__mult(mat_a[out_r][other_val], mat_b[other_val][out_c])
-
-    #     return out_mat
-
-
     @staticmethod 
     def __create_matrix(num_rows, num_cols):
         out_mat = []
@@ -359,26 +353,62 @@ class AES:
 
 
     @staticmethod
-    def __gen_modular_product(byteList):
-        a0b0 = AES.__pow_2_shift(byteList[0][0], 0x02)
-        a0b1 = AES.__pow_2_shift(byteList[1][0], 0x02)
-        a0b2 = AES.__pow_2_shift(byteList[2][0], 0x02)
-        a0b3 = AES.__pow_2_shift(byteList[3][0], 0x02)
+    def __gen_modular_product(byte_list):
+        a0b0 = AES.__pow_2_shift(byte_list[0][0], 0x02)
+        a0b1 = AES.__pow_2_shift(byte_list[1][0], 0x02)
+        a0b2 = AES.__pow_2_shift(byte_list[2][0], 0x02)
+        a0b3 = AES.__pow_2_shift(byte_list[3][0], 0x02)
 
-        a1b0 = AES.__pow_2_shift(byteList[0][0], 0x01)
-        a1b1 = AES.__pow_2_shift(byteList[1][0], 0x01)
-        a1b2 = AES.__pow_2_shift(byteList[2][0], 0x01)
-        a1b3 = AES.__pow_2_shift(byteList[3][0], 0x01)
+        a1b0 = byte_list[0][0]
+        a1b1 = byte_list[1][0]
+        a1b2 = byte_list[2][0]
+        a1b3 = byte_list[3][0]
         
-        a2b0 = AES.__pow_2_shift(byteList[0][0], 0x01)
-        a2b1 = AES.__pow_2_shift(byteList[1][0], 0x01)
-        a2b2 = AES.__pow_2_shift(byteList[2][0], 0x01)
-        a2b3 = AES.__pow_2_shift(byteList[3][0], 0x01)
+        a2b0 = byte_list[0][0]
+        a2b1 = byte_list[1][0]
+        a2b2 = byte_list[2][0]
+        a2b3 = byte_list[3][0]
         
-        a3b0 = AES.__pow_2_shift(byteList[0][0], 0x02) ^ AES.__pow_2_shift(byteList[0][0], 0x01)
-        a3b1 = AES.__pow_2_shift(byteList[1][0], 0x02) ^ AES.__pow_2_shift(byteList[1][0], 0x01)
-        a3b2 = AES.__pow_2_shift(byteList[2][0], 0x02) ^ AES.__pow_2_shift(byteList[2][0], 0x01)
-        a3b3 = AES.__pow_2_shift(byteList[3][0], 0x02) ^ AES.__pow_2_shift(byteList[3][0], 0x01)
+        a3b0 = AES.__pow_2_shift(byte_list[0][0], 0x02) ^ byte_list[0][0]
+        a3b1 = AES.__pow_2_shift(byte_list[1][0], 0x02) ^ byte_list[1][0]
+        a3b2 = AES.__pow_2_shift(byte_list[2][0], 0x02) ^ byte_list[2][0]
+        a3b3 = AES.__pow_2_shift(byte_list[3][0], 0x02) ^ byte_list[3][0]
+
+        result = []
+
+        # 03 01 01 02
+        # d0 =        a0b0 + a3b1 + a2b2 + a1b3
+        result.append([a0b0 ^ a3b1 ^ a2b2 ^ a1b3])
+        # d1 =        a1b0 + a0b1 + a3b2 + a2b3
+        result.append([a1b0 ^ a0b1 ^ a3b2 ^ a2b3])
+        # d2 =        a2b0 + a1b1 + a0b2 + a3b3
+        result.append([a2b0 ^ a1b1 ^ a0b2 ^ a3b3])
+        # d3 =        a3b0 + a2b1 + a1b2 + a0b3
+        result.append([a3b0 ^ a2b1 ^ a1b2 ^ a0b3])
+        return result
+
+
+    @staticmethod
+    def __gen_inverse_modular_product(byte_list):
+        a0b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x04) ^ AES.__pow_2_shift(byte_list[0][0], 0x02)
+        a0b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x04) ^ AES.__pow_2_shift(byte_list[1][0], 0x02)
+        a0b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x04) ^ AES.__pow_2_shift(byte_list[2][0], 0x02)
+        a0b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x04) ^ AES.__pow_2_shift(byte_list[3][0], 0x02)
+
+        a1b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ byte_list[0][0]
+        a1b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ byte_list[1][0]
+        a1b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ byte_list[2][0]
+        a1b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ byte_list[3][0]
+        
+        a2b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x04) ^ byte_list[0][0]
+        a2b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x04) ^ byte_list[1][0]
+        a2b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x04) ^ byte_list[2][0]
+        a2b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x04) ^ byte_list[3][0]
+        
+        a3b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x02) ^ byte_list[0][0]
+        a3b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x02) ^ byte_list[1][0]
+        a3b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x02) ^ byte_list[2][0]
+        a3b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x02) ^ byte_list[3][0]
 
         result = []
 
