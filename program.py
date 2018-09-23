@@ -14,7 +14,10 @@ if __name__ == '__main__':
     parser.add_argument('--inputfile', required=True, help='The file to encrypt or decrypt')
     parser.add_argument('--outputfile', required=True, help='The destination file path for the output')
     parser.add_argument('--mode', required=True, help='Whether to encrypt or decrypt the file', choices=['encrypt', 'decrypt'])
+    parser.add_argument('--operation', required=False, help="ECB (Electronic Code Block) mode will independently encrypt each \
+    block of input. CBC (Code Block Chaining) mode will use the previous block as part of the encryption process, removing patterns \
+    that can be found in plaintext and increasing security.", choices=['ecb', 'cbc'], default="ecb")
 
     args=parser.parse_args()
 
-    aes_runner.run(args.keyfile, args.keysize, args.inputfile, args.outputfile, args.mode)
+    aes_runner.run(args.keyfile, args.keysize, args.inputfile, args.outputfile, args.mode, args.operation)
