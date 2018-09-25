@@ -270,82 +270,44 @@ class AES:
 
 
     @staticmethod
+    def gfield_calc(byte, prod):
+        i = 7
+        runningSum = 0x0
+        while i >= 0:
+            bit = ((prod >> i) & 0x1)
+            if bit == 0x1:
+                byteTemp = byte
+                shift = 0x1 << i
+                while shift > 0:
+                    if shift == 1:
+                        break
+                    byteTemp = byteTemp << 1
+                    if byteTemp & 0x100:
+                        byteTemp = byteTemp ^ 0x11b
+                    shift = shift >> 1
+                runningSum ^= byteTemp
+            i -= 1
+        return runningSum
+
+    @staticmethod
     def __gen_modular_product(byte_list):
-        a0b0 = AES.__pow_2_shift(byte_list[0][0], 0x02)
-        a0b1 = AES.__pow_2_shift(byte_list[1][0], 0x02)
-        a0b2 = AES.__pow_2_shift(byte_list[2][0], 0x02)
-        a0b3 = AES.__pow_2_shift(byte_list[3][0], 0x02)
 
-        a1b0 = byte_list[0][0]
-        a1b1 = byte_list[1][0]
-        a1b2 = byte_list[2][0]
-        a1b3 = byte_list[3][0]
+        result = [[0x0], [0x0], [0x0], [0x0]]
+
+        for row in range(len(constants.NORMAL_GENMOD)):
+            for byte in range(len(byte_list)):
+                result[row][0] ^= AES.gfield_calc(byte_list[byte][0], constants.NORMAL_GENMOD[row][byte])
         
-        a2b0 = byte_list[0][0]
-        a2b1 = byte_list[1][0]
-        a2b2 = byte_list[2][0]
-        a2b3 = byte_list[3][0]
-        
-        a3b0 = AES.__pow_2_shift(byte_list[0][0], 0x02) ^ byte_list[0][0]
-        a3b1 = AES.__pow_2_shift(byte_list[1][0], 0x02) ^ byte_list[1][0]
-        a3b2 = AES.__pow_2_shift(byte_list[2][0], 0x02) ^ byte_list[2][0]
-        a3b3 = AES.__pow_2_shift(byte_list[3][0], 0x02) ^ byte_list[3][0]
-
-        result = []
-
-        # 03 01 01 02
-        # d0 =        a0b0 + a3b1 + a2b2 + a1b3
-        result.append([a0b0 ^ a3b1 ^ a2b2 ^ a1b3])
-        # d1 =        a1b0 + a0b1 + a3b2 + a2b3
-        result.append([a1b0 ^ a0b1 ^ a3b2 ^ a2b3])
-        # d2 =        a2b0 + a1b1 + a0b2 + a3b3
-        result.append([a2b0 ^ a1b1 ^ a0b2 ^ a3b3])
-        # d3 =        a3b0 + a2b1 + a1b2 + a0b3
-        result.append([a3b0 ^ a2b1 ^ a1b2 ^ a0b3])
         return result
 
 
     @staticmethod
     def __gen_inverse_modular_product(byte_list):
-        a0b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x04) ^ AES.__pow_2_shift(byte_list[0][0], 0x02)
-        a0b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x04) ^ AES.__pow_2_shift(byte_list[1][0], 0x02)
-        a0b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x04) ^ AES.__pow_2_shift(byte_list[2][0], 0x02)
-        a0b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x04) ^ AES.__pow_2_shift(byte_list[3][0], 0x02)
 
-        a1b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ byte_list[0][0]
-        a1b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ byte_list[1][0]
-        a1b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ byte_list[2][0]
-        a1b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ byte_list[3][0]
+        result = [[0x0], [0x0], [0x0], [0x0]]
+
+        for row in range(len(constants.INVERSE_GENMOD)):
+            for byte in range(len(byte_list)):
+                result[row][0] ^= AES.gfield_calc(byte_list[byte][0], constants.INVERSE_GENMOD[row][byte])
         
-        a2b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x04) ^ byte_list[0][0]
-        a2b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x04) ^ byte_list[1][0]
-        a2b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x04) ^ byte_list[2][0]
-        a2b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x04) ^ byte_list[3][0]
-        
-        a3b0 = AES.__pow_2_shift(byte_list[0][0], 0x08) ^ AES.__pow_2_shift(byte_list[0][0], 0x02) ^ byte_list[0][0]
-        a3b1 = AES.__pow_2_shift(byte_list[1][0], 0x08) ^ AES.__pow_2_shift(byte_list[1][0], 0x02) ^ byte_list[1][0]
-        a3b2 = AES.__pow_2_shift(byte_list[2][0], 0x08) ^ AES.__pow_2_shift(byte_list[2][0], 0x02) ^ byte_list[2][0]
-        a3b3 = AES.__pow_2_shift(byte_list[3][0], 0x08) ^ AES.__pow_2_shift(byte_list[3][0], 0x02) ^ byte_list[3][0]
-
-        result = []
-
-        # 03 01 01 02
-        # d0 =        a0b0 + a3b1 + a2b2 + a1b3
-        result.append([a0b0 ^ a3b1 ^ a2b2 ^ a1b3])
-        # d1 =        a1b0 + a0b1 + a3b2 + a2b3
-        result.append([a1b0 ^ a0b1 ^ a3b2 ^ a2b3])
-        # d2 =        a2b0 + a1b1 + a0b2 + a3b3
-        result.append([a2b0 ^ a1b1 ^ a0b2 ^ a3b3])
-        # d3 =        a3b0 + a2b1 + a1b2 + a0b3
-        result.append([a3b0 ^ a2b1 ^ a1b2 ^ a0b3])
         return result
-
-
-    @staticmethod
-    def __pow_2_shift(byte, shift):
-        if shift == 1:
-            return byte
-        byte = byte << 1
-        if (byte & 0x100):
-            byte = byte ^ 0x11b
-        return AES.__pow_2_shift(byte, shift >> 1)
