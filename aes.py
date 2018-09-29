@@ -6,7 +6,7 @@ class AES:
     def __init__(self, key, keysize):
         self.keysize = keysize                 
         self.state = []
-        self.col_count = self.keysize // constants.BITS_PER_BYTE // constants.ROW_COUNT
+        self.col_count = self.keysize // constants.BITS_PER_BYTE // constants.STATE_SIZE
         self.__generate_key_array(key)
 
         self.round_subkeys = self.__generate_round_subkeys()
@@ -17,7 +17,7 @@ class AES:
         self.previous_encrypted_block = constants.CBC_INITIALIZATION_VECTOR
 
         while not last_block:
-            self.state = AES.__create_matrix(4, 4)
+            self.state = AES.__create_matrix(constants.STATE_SIZE, constants.STATE_SIZE)
 
             byte_count = self.__read_chunk_into_state(inputfile, 16)
 
@@ -121,40 +121,40 @@ class AES:
 
 
     def __generate_key_array(self, key):
-        self.key_array = AES.__create_matrix(constants.ROW_COUNT, self.col_count)
+        self.key_array = AES.__create_matrix(constants.STATE_SIZE, self.col_count)
 
         key_bytes = bytearray(key)
 
         index = 0
-        for col in range(self.col_count):
-            for row in range(constants.ROW_COUNT):
+        for col in range(constants.STATE_SIZE):
+            for row in range(constants.STATE_SIZE):
                 self.key_array[row][col] = key_bytes[index]
                 index = index + 1
            
 
     def __sub_bytes(self, sub_bytes_array):
-        for row in range(constants.ROW_COUNT):
-            for col in range (self.col_count):
+        for row in range(constants.STATE_SIZE):
+            for col in range (constants.STATE_SIZE):
                 current_val = self.state[row][col]
                 self.state[row][col] = sub_bytes_array[current_val]
 
 
     def __shift_rows(self):
-        for row_idx in range(1, constants.ROW_COUNT):
+        for row_idx in range(1, constants.STATE_SIZE):
             row = self.state[row_idx]
             for _ in range(row_idx):
                 row.append(row.pop(0))
 
 
     def __inv_shift_rows(self):
-        for row_idx in range(1, constants.ROW_COUNT):
+        for row_idx in range(1, constants.STATE_SIZE):
             row = self.state[row_idx]
             for _ in range(row_idx):
                 row.insert(0, row.pop())
 
 
     def __mix_columns(self):
-        for i in range(constants.ROW_COUNT):
+        for i in range(constants.STATE_SIZE):
             col = AES.__get_col(self.state, i)
             mixed_col = AES.__gen_modular_product(col)
             for r in range(len(mixed_col)):
@@ -162,7 +162,7 @@ class AES:
 
 
     def __inv_mix_columns(self):
-        for i in range(constants.ROW_COUNT):
+        for i in range(constants.STATE_SIZE):
             col = AES.__get_col(self.state, i)
             mixed_col = AES.__gen_inverse_modular_product(col)
             for r in range(len(mixed_col)):
@@ -170,7 +170,7 @@ class AES:
 
 
     def __add_roundkey(self, round_idx):
-        key_column_start_idx = round_idx * self.col_count
+        key_column_start_idx = round_idx * constants.STATE_SIZE
         for row in range(4):
             for col in range(4):
                 self.state[row][col] ^= self.round_subkeys[row][key_column_start_idx + col]
@@ -181,7 +181,7 @@ class AES:
         key_words = self.keysize // word_size
         total_col = 4 * constants.ROUNDS_PER_KEYSIZE[self.keysize]
 
-        round_subkeys = AES.__create_matrix(constants.ROW_COUNT, total_col)
+        round_subkeys = AES.__create_matrix(constants.STATE_SIZE, total_col)
 
         for current_col in range(total_col):
             if current_col < key_words:
