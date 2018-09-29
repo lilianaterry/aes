@@ -56,6 +56,7 @@ CBC_INITIALIZATION_VECTOR = [
     [13, 14, 15, 16]
 ]
 
+# Matrix used for inverse mixing calculations in decryption process.
 INVERSE_GENMOD = [
     [0xe, 0xb, 0xd, 0x9],
     [0x9, 0xe, 0xb, 0xd],
@@ -63,7 +64,7 @@ INVERSE_GENMOD = [
     [0xb, 0xd, 0x9, 0xe]
 ]
 
-
+# Matrix used for mixing calculations in encryption process.
 NORMAL_GENMOD = [
     [0x2, 0x3, 0x1, 0x1],
     [0x1, 0x2, 0x3, 0x1],

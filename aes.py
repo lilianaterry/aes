@@ -24,7 +24,7 @@ class AES:
             last_block = (byte_count < 16)
             
             if last_block:
-                # fill the rest of the block with 0's and add count at end
+                # Fill the rest of the block with 0's and add count at end.
                 self.state[3][3] = 16 - byte_count
 
             if operation == 'cbc':
@@ -35,7 +35,7 @@ class AES:
             current_roundkey = 0
             self.__add_roundkey(current_roundkey)
 
-            # do algorithm
+            # Perform the encryption as described in the NIST document
             for _ in range(constants.ROUNDS_PER_KEYSIZE[self.keysize] - 2):
                 current_roundkey += 1
                 self.__sub_bytes(constants.SUB_BYTES)
@@ -53,6 +53,8 @@ class AES:
             
 
     def decrypt_file(self, inputfile, outfile, operation):
+
+        # Sets up storage of previous encrypted block for later use if cbc mode is active.
         self.previous_encrypted_block = AES.__create_matrix(4, 4)
         for r_idx in range(len(self.previous_encrypted_block)):
             for c_idx in range(len(self.previous_encrypted_block)):
@@ -69,6 +71,7 @@ class AES:
                     for c_idx in range(len(self.state)):
                         self.next_previous_encrypted_block[r_idx][c_idx] = self.state[r_idx][c_idx]
             
+            # Remove the padding from the end of the encryption so we only get the necessary data.
             if byte_count == 0:
                 outfile.seek(-1, 2)
                 bytes_to_remove = outfile.read(1)
@@ -79,7 +82,7 @@ class AES:
             current_roundkey = constants.ROUNDS_PER_KEYSIZE[self.keysize] - 1
             self.__add_roundkey(current_roundkey)
 
-            # do algorithm
+            # Perform the decryption as described in the NIST document
             for _ in range(constants.ROUNDS_PER_KEYSIZE[self.keysize] - 2):
                 current_roundkey -= 1
                 self.__inv_shift_rows()
@@ -176,6 +179,8 @@ class AES:
                 self.state[row][col] ^= self.round_subkeys[row][key_column_start_idx + col]
 
 
+    # Generates the expanded key needed for encryption and decryption roundkey operations(based on the key_expansion 
+    # psuedocode from the given NIST document).
     def __generate_round_subkeys(self):
         word_size = 32
         key_words = self.keysize // word_size
@@ -273,11 +278,14 @@ class AES:
     def gfield_calc(byte, prod):
         i = 7
         runningSum = 0x0
+        # Determine which powers of 2 sum to prod.
         while i >= 0:
             bit = ((prod >> i) & 0x1)
             if bit == 0x1:
                 byteTemp = byte
                 shift = 0x1 << i
+                # Perform an iterative implementation of xtimes on the byte
+                # related to the power of 2 found in the prod number.
                 while shift > 0:
                     if shift == 1:
                         break
@@ -285,10 +293,12 @@ class AES:
                     if byteTemp & 0x100:
                         byteTemp = byteTemp ^ 0x11b
                     shift = shift >> 1
-                runningSum ^= byteTemp
+                runningSum ^= byteTemp  # "Add" the xtimes result into the running sum
             i -= 1
         return runningSum
 
+
+    # Performs the calculations necessary to "mix" one column(used for encryption).
     @staticmethod
     def __gen_modular_product(byte_list):
 
@@ -301,6 +311,7 @@ class AES:
         return result
 
 
+    # Perfoms the calculations necessary to "inverse mix" one column(used for decryption).
     @staticmethod
     def __gen_inverse_modular_product(byte_list):
 
