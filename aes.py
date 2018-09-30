@@ -10,7 +10,13 @@ class AES:
         self.__generate_key_array(key)
 
         self.round_subkeys = self.__generate_round_subkeys()
-
+        val = 0
+        for col in range(len(self.round_subkeys[0])):
+        	hexvals = "%d:" % val	
+        	for row in range(len(self.round_subkeys)):
+        		hexvals += " %x" % self.round_subkeys[row][col]
+        	print(hexvals)
+        	val += 1
 
     def encrypt_file(self, inputfile, outfile, operation):
         last_block = False
@@ -129,7 +135,7 @@ class AES:
         key_bytes = bytearray(key)
 
         index = 0
-        for col in range(constants.STATE_SIZE):
+        for col in range(self.col_count):
             for row in range(constants.STATE_SIZE):
                 self.key_array[row][col] = key_bytes[index]
                 index = index + 1
